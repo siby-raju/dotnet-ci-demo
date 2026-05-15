@@ -1,45 +1,76 @@
-name: PR Continuous Integration
+name: Build and Deploy .NET Application
 
 on:
+  push:
+    branches:
+      - main
+      - develop
+
   pull_request:
     branches:
       - main
+      - develop
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+  # Enable Node.js 24 for GitHub Actions
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-test:
-    runs-on: windows-latest
-
-    env:
-      SOLUTION: '**/*.sln'
-      BUILD_PLATFORM: x86
-      BUILD_CONFIGURATION: Release
+  build:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
-
-      - name: Setup .NET 8 SDK
-        uses: actions/setup-dotnet@v4
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore NuGet packages
-        run: nuget restore ${{ env.SOLUTION }}
+      - name: Verify .NET Version
+        run: dotnet --version
 
-      - name: Build solution
-        run: |
-          dotnet build ${{ env.SOLUTION }} --configuration ${{ env.BUILD_CONFIGURATION }}
+      - name: Restore Dependencies
+        run: dotnet restore
 
-      - name: Run tests
-        run: |
-          dotnet test --configuration ${{ env.BUILD_CONFIGURATION }}
+      - name: Build Application
+        run: dotnet build --configuration Release --no-restore
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Run Unit Tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Publish Application
+        run: dotnet publish -c Release -o ./publish
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v5
         with:
-          name: build-artifacts
-          path: |
-            **/bin/Release/
+          name: dotnet-app
+          path: ./publish
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: dotnet-app
+          path: ./publish
+
+      - name: Display Published Files
+        run: ls -la ./publish
+
+      # Example deployment step
+      # Replace with Azure Web App / IIS / Docker / AWS deployment
+
+      - name: Deploy Application
+        run: |
+          echo "Deploying application..."
+          echo "Deployment completed successfully"

@@ -10,36 +10,23 @@ jobs:
     runs-on: windows-latest
 
     env:
-      SOLUTION: '**/*.sln'
-      BUILD_PLATFORM: x86
+      SOLUTION: 'DemoSolution.sln'
       BUILD_CONFIGURATION: Release
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
-
-      - name: Setup .NET 8 SDK
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: 8.0.x
 
-      - name: Restore NuGet packages
-        run: nuget restore ${{ env.SOLUTION }}
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION }}
 
-      - name: Build solution
-        run: |
-          dotnet build ${{ env.SOLUTION }} --configuration ${{ env.BUILD_CONFIGURATION }}
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
-      - name: Run tests
-        run: |
-          dotnet test --configuration ${{ env.BUILD_CONFIGURATION }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: |
-            **/bin/Release/
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION }} --no-build --verbosity normal
